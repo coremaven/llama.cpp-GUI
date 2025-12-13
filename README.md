@@ -2,6 +2,8 @@
 
 A professional PyQt6-based graphical interface for managing llama.cpp server instances.
 
+![llama.cpp Server GUI Screenshot](screenshot.png)
+
 ## Features
 
 - **Server Binary Selection**: Browse and select your llama.cpp server binary
