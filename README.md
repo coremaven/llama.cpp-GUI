@@ -1,6 +1,7 @@
 # llama.cpp Server GUI
 
-A professional PyQt6-based graphical interface for managing llama.cpp server instances. Made with AI (Claude)
+A professional PyQt6-based graphical interface for managing llama.cpp server instances. Made with AI (Claude).
+
 I'm just uploading the small tools I have AI make for me. You never know, someone else might get some use out of them.
 
 ![llama.cpp Server GUI Screenshot](screenshot.png)
