@@ -349,7 +349,7 @@ class LlamaServerGUI(QMainWindow):
 
     def browse_binary(self):
         """Browse for server binary"""
-        default_path = "/home/xero110/dev/llama.cpp/build/bin"
+        default_path = "~/"
         if os.path.exists(default_path):
             start_dir = default_path
         else:
