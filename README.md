@@ -100,8 +100,7 @@ Settings are stored in `~/.llama_server_gui_config.json`
 
 ## Tips
 
-- For RTX 4070 (8GB VRAM): Start with ngl=33 and adjust based on your model size
-- With 96GB RAM and i9 CPU: You can use high thread counts (16-24) and large context sizes
+- For 8GB of VRAM: Start with ngl=33 and adjust based on your model size
 - Create different profiles for different models (e.g., "Llama-3-8B", "Mistral-7B", etc.)
 - Use the system tray to keep the server running while working on other tasks
 
