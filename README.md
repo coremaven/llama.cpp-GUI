@@ -47,7 +47,7 @@ python3 llama_server_gui.py
 
 ## Quick Start
 
-1. **Select Server Binary**: Click "Browse..." in the "Server Binary" section and navigate to your llama.cpp server binary (e.g., `/home/xero110/dev/llama.cpp/build/bin/llama-server`)
+1. **Select Server Binary**: Click "Browse..." in the "Server Binary" section and navigate to your llama.cpp server binary.
 
 2. **Select Model**: Click "Browse..." in the "Model Selection" section and choose your GGUF model file
 
