@@ -10,10 +10,23 @@ import json
 import subprocess
 from pathlib import Path
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QLineEdit, QTextEdit, QFileDialog,
-    QGroupBox, QSpinBox, QComboBox, QCheckBox, QMessageBox,
-    QSystemTrayIcon, QMenu
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QLineEdit,
+    QTextEdit,
+    QFileDialog,
+    QGroupBox,
+    QSpinBox,
+    QComboBox,
+    QCheckBox,
+    QMessageBox,
+    QSystemTrayIcon,
+    QMenu,
 )
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt
 from PyQt6.QtGui import QIcon, QAction
@@ -21,6 +34,7 @@ from PyQt6.QtGui import QIcon, QAction
 
 class ServerOutputReader(QThread):
     """Thread to read server output without blocking the GUI"""
+
     output_received = pyqtSignal(str)
 
     def __init__(self, process):
@@ -31,6 +45,7 @@ class ServerOutputReader(QThread):
     def run(self):
         """Read output from the process"""
         import select
+
         while self.running:
             if self.process.poll() is not None:
                 # Process has terminated, read any remaining output
@@ -39,7 +54,9 @@ class ServerOutputReader(QThread):
 
             # Use select to check if there's data available (non-blocking)
             try:
-                readable, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0.1)
+                readable, _, _ = select.select(
+                    [self.process.stdout, self.process.stderr], [], [], 0.1
+                )
 
                 if self.process.stdout in readable:
                     output = self.process.stdout.readline()
@@ -172,7 +189,9 @@ class LlamaServerGUI(QMainWindow):
         layout = QHBoxLayout()
 
         self.binary_path_edit = QLineEdit()
-        self.binary_path_edit.setPlaceholderText("Path to llama.cpp server binary (e.g., llama-server)")
+        self.binary_path_edit.setPlaceholderText(
+            "Path to llama.cpp server binary (e.g., llama-server)"
+        )
         layout.addWidget(self.binary_path_edit)
 
         browse_btn = QPushButton("Browse...")
@@ -308,7 +327,9 @@ class LlamaServerGUI(QMainWindow):
         self.tray_icon = QSystemTrayIcon(self)
 
         # Try to use a default icon, fallback if not available
-        icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_ComputerIcon)
+        icon = QApplication.style().standardIcon(
+            QApplication.style().StandardPixmap.SP_ComputerIcon
+        )
         self.tray_icon.setIcon(icon)
 
         # Tray menu
@@ -349,35 +370,36 @@ class LlamaServerGUI(QMainWindow):
 
     def browse_binary(self):
         """Browse for server binary"""
-        default_path = "~/"
-        if os.path.exists(default_path):
-            start_dir = default_path
-        else:
-            start_dir = str(Path.home())
+        # Use last binary folder if available, otherwise home directory
+        last_dir = self.config.get("last_binary_dir", str(Path.home()))
 
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select llama.cpp Server Binary",
-            start_dir,
-            "Executable Files (*);;All Files (*)"
+            last_dir,
+            "Executable Files (*);;All Files (*)",
         )
 
         if file_path:
             self.binary_path_edit.setText(file_path)
+            # Save the directory for next time
+            self.config["last_binary_dir"] = str(Path(file_path).parent)
+            self.save_config()
 
     def browse_model(self):
         """Browse for model file"""
-        start_dir = str(Path.home())
+        # Use last model folder if available, otherwise home directory
+        last_dir = self.config.get("last_model_dir", str(Path.home()))
 
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Model File",
-            start_dir,
-            "GGUF Files (*.gguf);;All Files (*)"
+            self, "Select Model File", last_dir, "GGUF Files (*.gguf);;All Files (*)"
         )
 
         if file_path:
             self.model_path_edit.setText(file_path)
+            # Save the directory for next time
+            self.config["last_model_dir"] = str(Path(file_path).parent)
+            self.save_config()
 
     def start_server(self):
         """Start the llama.cpp server"""
@@ -389,7 +411,9 @@ class LlamaServerGUI(QMainWindow):
             return
 
         if not os.path.exists(binary_path):
-            QMessageBox.warning(self, "Error", f"Server binary not found: {binary_path}")
+            QMessageBox.warning(
+                self, "Error", f"Server binary not found: {binary_path}"
+            )
             return
 
         if not model_path:
@@ -407,13 +431,20 @@ class LlamaServerGUI(QMainWindow):
         # Build command
         cmd = [
             binary_path,
-            "-m", model_path,
-            "--host", self.host_edit.text(),
-            "--port", str(self.port_spin.value()),
-            "-c", str(self.context_spin.value()),
-            "-ngl", str(self.ngl_spin.value()),
-            "-t", str(self.threads_spin.value()),
-            "-b", str(self.batch_spin.value())
+            "-m",
+            model_path,
+            "--host",
+            self.host_edit.text(),
+            "--port",
+            str(self.port_spin.value()),
+            "-c",
+            str(self.context_spin.value()),
+            "-ngl",
+            str(self.ngl_spin.value()),
+            "-t",
+            str(self.threads_spin.value()),
+            "-b",
+            str(self.batch_spin.value()),
         ]
 
         # Add additional arguments
@@ -429,7 +460,7 @@ class LlamaServerGUI(QMainWindow):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
 
             # Start output reader thread
@@ -443,7 +474,7 @@ class LlamaServerGUI(QMainWindow):
                 "llama.cpp Server",
                 "Server started successfully",
                 QSystemTrayIcon.MessageIcon.Information,
-                2000
+                2000,
             )
 
         except Exception as e:
@@ -488,7 +519,9 @@ class LlamaServerGUI(QMainWindow):
                 self.server_process.kill()
                 self.stop_timer.stop()
                 # Wait a bit more for kill to take effect
-                QTimer.singleShot(500, lambda: self.cleanup_after_stop("Server killed (forced)\n"))
+                QTimer.singleShot(
+                    500, lambda: self.cleanup_after_stop("Server killed (forced)\n")
+                )
 
     def cleanup_after_stop(self, message):
         """Clean up after server has stopped"""
@@ -505,7 +538,7 @@ class LlamaServerGUI(QMainWindow):
             "llama.cpp Server",
             "Server stopped",
             QSystemTrayIcon.MessageIcon.Information,
-            2000
+            2000,
         )
 
     def append_log(self, text):
@@ -517,7 +550,9 @@ class LlamaServerGUI(QMainWindow):
 
     def update_button_states(self):
         """Update button enabled/disabled states"""
-        is_running = self.server_process is not None and self.server_process.poll() is None
+        is_running = (
+            self.server_process is not None and self.server_process.poll() is None
+        )
         self.start_btn.setEnabled(not is_running)
         self.stop_btn.setEnabled(is_running)
 
@@ -533,7 +568,7 @@ class LlamaServerGUI(QMainWindow):
             "threads": self.threads_spin.value(),
             "batch": self.batch_spin.value(),
             "additional_args": self.additional_args_edit.text(),
-            "auto_start": self.auto_start_checkbox.isChecked()
+            "auto_start": self.auto_start_checkbox.isChecked(),
         }
 
     def apply_settings(self, settings):
@@ -562,7 +597,7 @@ class LlamaServerGUI(QMainWindow):
             self,
             "Save Profile",
             "Profile name:",
-            text=current_name if current_name else ""
+            text=current_name if current_name else "",
         )
 
         if ok and profile_name:
@@ -573,7 +608,9 @@ class LlamaServerGUI(QMainWindow):
             self.log_text.append(f"Saving profile '{profile_name}' with settings:\n")
             self.log_text.append(f"  Binary: {settings['binary_path']}\n")
             self.log_text.append(f"  Model: {settings['model_path']}\n")
-            self.log_text.append(f"  Port: {settings['port']}, Context: {settings['context']}, NGL: {settings['ngl']}\n")
+            self.log_text.append(
+                f"  Port: {settings['port']}, Context: {settings['context']}, NGL: {settings['ngl']}\n"
+            )
 
             # Save to config
             self.config["profiles"][profile_name] = settings
@@ -604,11 +641,15 @@ class LlamaServerGUI(QMainWindow):
         """Load the currently selected profile (manual load via button)"""
         profile_name = self.profile_combo.currentText()
         if not profile_name:
-            QMessageBox.warning(self, "No Profile Selected", "Please select a profile to load")
+            QMessageBox.warning(
+                self, "No Profile Selected", "Please select a profile to load"
+            )
             return
 
         if profile_name not in self.config["profiles"]:
-            QMessageBox.warning(self, "Profile Not Found", f"Profile '{profile_name}' not found")
+            QMessageBox.warning(
+                self, "Profile Not Found", f"Profile '{profile_name}' not found"
+            )
             return
 
         self.log_text.append(f"Manually loading profile '{profile_name}'...\n")
@@ -623,7 +664,9 @@ class LlamaServerGUI(QMainWindow):
             self.log_text.append(f"Loading profile '{profile_name}' with settings:\n")
             self.log_text.append(f"  Binary: {settings.get('binary_path', 'N/A')}\n")
             self.log_text.append(f"  Model: {settings.get('model_path', 'N/A')}\n")
-            self.log_text.append(f"  Port: {settings.get('port', 'N/A')}, Context: {settings.get('context', 'N/A')}, NGL: {settings.get('ngl', 'N/A')}\n")
+            self.log_text.append(
+                f"  Port: {settings.get('port', 'N/A')}, Context: {settings.get('context', 'N/A')}, NGL: {settings.get('ngl', 'N/A')}\n"
+            )
 
             self.apply_settings(settings)
             self.config["last_profile"] = profile_name
@@ -646,7 +689,7 @@ class LlamaServerGUI(QMainWindow):
             self,
             "Delete Profile",
             f"Are you sure you want to delete profile '{profile_name}'?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -672,7 +715,7 @@ class LlamaServerGUI(QMainWindow):
         """Load configuration from file"""
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, "r") as f:
                     return json.load(f)
             except Exception as e:
                 print(f"Error loading config: {e}")
@@ -682,15 +725,15 @@ class LlamaServerGUI(QMainWindow):
     def save_config(self):
         """Save configuration to file"""
         try:
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=2)
             # Debug: log what we saved
-            if hasattr(self, 'log_text'):
+            if hasattr(self, "log_text"):
                 profile_count = len(self.config.get("profiles", {}))
                 self.log_text.append(f"Config saved: {profile_count} profile(s)\n")
         except Exception as e:
             print(f"Error saving config: {e}")
-            if hasattr(self, 'log_text'):
+            if hasattr(self, "log_text"):
                 self.log_text.append(f"Error saving config: {e}\n")
 
     def closeEvent(self, event):
@@ -703,9 +746,9 @@ class LlamaServerGUI(QMainWindow):
                 "Yes - Minimize to tray\n"
                 "No - Stop server and quit\n"
                 "Cancel - Do nothing",
-                QMessageBox.StandardButton.Yes |
-                QMessageBox.StandardButton.No |
-                QMessageBox.StandardButton.Cancel
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No
+                | QMessageBox.StandardButton.Cancel,
             )
 
             if reply == QMessageBox.StandardButton.Yes:
