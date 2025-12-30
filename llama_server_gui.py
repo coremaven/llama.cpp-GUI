@@ -100,6 +100,7 @@ class LlamaServerGUI(QMainWindow):
         self.server_process = None
         self.output_reader = None
         self.config = self.load_config()
+        self.health_check_timer = None
 
         self.init_ui()
         self.load_last_profile()
@@ -468,26 +469,33 @@ class LlamaServerGUI(QMainWindow):
             self.output_reader.output_received.connect(self.append_log)
             self.output_reader.start()
 
-            self.log_text.append("Server started successfully!\n")
+            self.log_text.append("Server process launched, checking health...\n")
             self.update_button_states()
-            self.tray_icon.showMessage(
-                "llama.cpp Server",
-                "Server started successfully",
-                QSystemTrayIcon.MessageIcon.Information,
-                2000,
-            )
+
+            # Start health monitoring - check if server crashes shortly after startup
+            self.health_check_timer = QTimer()
+            self.health_check_timer.timeout.connect(self.check_server_health)
+            self.health_check_attempts = 0
+            self.health_check_timer.start(500)  # Check every 500ms
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to start server:\n{str(e)}")
             self.log_text.append(f"Error starting server: {str(e)}\n")
+            self.server_process = None
+            self.update_button_states()
 
     def stop_server(self):
         """Stop the llama.cpp server"""
         if not self.server_process or self.server_process.poll() is not None:
             QMessageBox.warning(self, "Error", "Server is not running")
+            self.update_button_states()  # Fix button states if they're out of sync
             return
 
         self.log_text.append("Stopping server...\n")
+
+        # Stop health check timer if running
+        if self.health_check_timer:
+            self.health_check_timer.stop()
 
         # Disable stop button while stopping
         self.stop_btn.setEnabled(False)
@@ -540,6 +548,71 @@ class LlamaServerGUI(QMainWindow):
             QSystemTrayIcon.MessageIcon.Information,
             2000,
         )
+
+    def check_server_health(self):
+        """Monitor server health after startup"""
+        if not self.server_process:
+            # Server was manually stopped
+            if self.health_check_timer:
+                self.health_check_timer.stop()
+            return
+
+        poll_result = self.server_process.poll()
+
+        if poll_result is not None:
+            # Process has terminated (crashed)
+            if self.health_check_timer:
+                self.health_check_timer.stop()
+
+            # Get exit code
+            exit_code = poll_result
+
+            self.log_text.append(
+                f"\n[ERROR] Server process terminated unexpectedly with exit code {exit_code}\n"
+            )
+
+            # Stop output reader
+            if self.output_reader:
+                self.output_reader.stop()
+                self.output_reader.wait(1000)
+                self.output_reader = None
+
+            self.server_process = None
+            self.update_button_states()
+
+            # Show error dialog
+            QMessageBox.critical(
+                self,
+                "Server Failed",
+                f"The llama-server process crashed with exit code {exit_code}.\n\n"
+                "This usually means:\n"
+                "- Invalid model file or format\n"
+                "- Insufficient memory (GPU or RAM)\n"
+                "- Wrong parameters (e.g., too many GPU layers)\n"
+                "- Binary/model compatibility issue\n\n"
+                "Check the logs below for details.",
+            )
+
+            self.tray_icon.showMessage(
+                "llama.cpp Server",
+                "Server crashed - check logs",
+                QSystemTrayIcon.MessageIcon.Critical,
+                3000,
+            )
+        else:
+            # Server is still running
+            self.health_check_attempts += 1
+
+            # Stop checking after 6 attempts (3 seconds) - server is stable
+            if self.health_check_attempts >= 6:
+                self.health_check_timer.stop()
+                self.log_text.append("Server is running and healthy\n")
+                self.tray_icon.showMessage(
+                    "llama.cpp Server",
+                    "Server started successfully",
+                    QSystemTrayIcon.MessageIcon.Information,
+                    2000,
+                )
 
     def append_log(self, text):
         """Append text to log viewer"""
